@@ -116,7 +116,7 @@ IEnumerator JumpCorutine()
 }
 ```
 
-![인게임](./jumpAttack.gif)
+![인게임](/gifs/jump.gif)
 
 
 ## 트러블슈팅
