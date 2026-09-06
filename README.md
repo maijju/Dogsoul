@@ -83,44 +83,9 @@ public virtual void LoadWeaponModel(WeaponStats weaponStats)
 - **거리별 다단계 전투 상태 머신(FSM) 구축**: 플레이어와의 거리에 따라 근접 공격, 특수 공격(점프 공격, 투사체 발사), 추적(Chase), 순찰(Patrol), 복귀(BackToSpawn) 상태를 체계적으로 전환하도록 설계했습니다.
 - **애니메이션 및 코루틴 기반의 특수 패턴**: 타깃이 멀리 떨어져 있을 때 보스의 점프 공격은 코루틴과 포물선 보간을 통해 역동감 있게 플레이어를 추적할 수 있게 설계했습니다.
 
-다음은 주요 코드 요약 (보스 컨트롤러) 입니다.
+다음은 주요 코드 요약 (점프 공격) 입니다.
 > BossController.cs
 ```c#
-// #1: 기본 로직
-void Update()
-{
-    if (animator.GetBool("IsInteracting")) return;
-    float distanceToPlayer = CalculDistance();
-
-    if (distanceToPlayer < attackDistance)
-    {
-        if (attackCoolDelta <= 1) 
-        {
-            Attack();
-        }
-        else
-        {
-            Chase();
-        }
-    } 
-    else if (distanceToPlayer > attackDistance && distanceToPlayer < rangedThresholdDistance)
-    {
-        Chase();
-    }
-    else if (distanceToPlayer > rangedThresholdDistance)
-    {
-        if (rangedCoolDelta <= 1)
-        {
-            RangedAttack();
-        }
-        else
-        {
-            Chase();
-        }
-    }
-}
-
-// #2: 점프 공격
 IEnumerator JumpCorutine()
 {
     Vector3 startPos = transform.position;
@@ -150,6 +115,8 @@ IEnumerator JumpCorutine()
     yield return new WaitForSeconds(3f);
 }
 ```
+
+![인게임](./jumpAttack.gif)
 
 
 ## 트러블슈팅
