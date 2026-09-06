@@ -85,8 +85,6 @@ public virtual void LoadWeaponModel(WeaponStats weaponStats)
 - 거리별 전투 **상태 머신(FSM)** 구축: 플레이어와의 거리에 따라 근접 공격, 특수 공격(점프 공격, 투사체 발사), 추적(Chase), 순찰(Patrol), 복귀(BackToSpawn) 상태를 체계적으로 전환하도록 설계했습니다.
 - **애니메이션 및 코루틴 기반**의 특수 패턴: 타깃이 멀리 떨어져 있을 때 보스의 점프 공격은 애니메이션 길이 만큼의 지속시간을 지니는 코루틴과 포물선 보간을 통해 역동감 있게 플레이어를 추적할 수 있게 설계했습니다.
 
-![인게임](/gifs/jump.gif)
-
 다음은 주요 코드 요약 (점프 공격) 입니다.
 > BossController.cs
 ```c#
@@ -120,6 +118,7 @@ IEnumerator JumpCorutine()
 }
 ```
 
+![인게임](/gifs/jump.gif)
 
 <br>
 
@@ -127,8 +126,6 @@ IEnumerator JumpCorutine()
 - **무기 스탯 기반**의 슈퍼아머/피격 판정: 플레이어와 적의 공격이 동시에 이루어진 경우, 공격 주체 간 무기의 강인도 (tenacity) 수치를 비교하여, 피격자가 더 높은 강인도로 공격 중일 경우 피격 판정 및 경직을 무시하는 상쇄 메커니즘을 구현했습니다.
 - **애니메이션 이벤트**를 통한 정확한 콜라이더 제어: 무기의 DamageCollider 활성화/비활성화 시점과 궤적 애니메이션(Trail)을 동기화하고, 피격 성공 시 본인의 공격 콜라이더를 즉시 닫아 연타 및 캔슬 오류를 방지했습니다.
 - 상태 래퍼 기반의 유연한 피격 리액션 처리: 피격 시 enum 기반 피격 상태(Hit, Stun, Invincible, Die)를 전환하고, 공중 피격 캔슬, 피격 이펙트 생성, 회피를 통한 무적 상태 부여 등 **소울류 게임의 기초적인 전투 파이프라인을 거의 동일하게 구현**했습니다.
-
-![인게임](/gifs/dodge.gif)
 
 다음은 주요 코드 요약 (플레이어 피격 함수) 입니다.
 > PlayerHealth.cs
@@ -150,6 +147,8 @@ public void TakeDamage(float damage, DamageCollider attackerWeapon, Vector3 cont
     #endregion
 }
 ```
+
+![인게임](/gifs/dodge.gif)
 
 <br>
 
