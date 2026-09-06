@@ -3,7 +3,7 @@
 <img width="1346" height="760" alt="image" src="https://github.com/user-attachments/assets/fbc785ce-14c8-47ee-85cd-4b7dcf6cae07" />
 
 
-> **Unity**와 **Photon**, **Firebase**를 활용한 멀티플레이 TPS ARPG 프로젝트입니다. 소울류 게임의 메커니즘을 가지되, SD 캐릭터, 빠른 액션, 멀티플레이 협업 요소를 추가하여 캐주얼하게 재해석했습니다.
+> **Unity**와 **Photon**, **Firebase**를 활용한 멀티플레이 TPS ARPG 프로젝트입니다. 소울류 게임의 메커니즘을 지니되, SD 캐릭터, 빠른 액션, 멀티플레이 협업 요소를 추가하여 캐주얼하게 재해석했습니다.
 - **프로젝트 구분**: 팀 프로젝트 (3명)
 - **장르**: 멀티플레이 TPS ARPG
 - **담당 역할**: 클라이언트 개발(플레이어, 몬스터, 전투), 기획, 팀장
@@ -77,6 +77,7 @@ public virtual void LoadWeaponModel(WeaponStats weaponStats)
     currentWeaponModel = weapon;
 }
 ```
+<br>
 
 ### 2. 거리 기반 AI 및 NavMesh 기반 보스 패턴 파이프라인 구축
 - **NavMesh 경로 기반의 정확한 타겟 거리 계산**: NavMeshAgent.CalculatePath로 모퉁이 사이의 실제 이동 경로 거리를 산출하여, 장애물 뒤에 있는 타겟에 대한 비정상적인 추적/공격 판단을 방지했습니다.
@@ -116,25 +117,57 @@ IEnumerator JumpCorutine()
 }
 ```
 
+
 ![인게임](/gifs/jump.gif)
 
+<br>
+
+### 3. 무기의 능력치를 전투 능력치로 사용하는 인터랙티브 전투 파이프라인
+- 무기 스탯 기반의 슈퍼아머/피격 판정: 플레이어와 적의 공격이 동시에 이루어진 경우, 공격 주체 간 무기의 강인도 (tenacity) 수치를 비교하여, 피격자가 더 높은 강인도로 공격 중일 경우 피격 판정 및 경직을 무시하는 상쇄 메커니즘을 구현했습니다.
+- 애니메이션 이벤트를 통한 정확한 콜라이더 제어: 무기의 DamageCollider 활성화/비활성화 시점과 궤적 애니메이션(Trail)을 동기화하고, 피격 성공 시 본인의 공격 콜라이더를 즉시 닫아 연타 및 캔슬 오류를 방지했습니다.
+- 상태 래퍼 기반의 유연한 피격 리액션 처리: 피격 시 enum 기반 피격 상태(Hit, Stun, Invincible, Die)를 전환하고, 공중 피격 캔슬, 피격 이펙트 생성, 회피를 통한 무적 상태 부여 등 소울류 게임의 기초적인 전투 파이프라인을 거의 동일하게 구현했습니다.
+
+다음은 주요 코드 요약 (플레이어 피격 함수) 입니다.
+> PlayerHealth.cs
+```c#
+public void TakeDamage(float damage, DamageCollider attackerWeapon, Vector3 contactPos, ParticleSystem hitEffect, bool isStun)
+{
+    DamageCollider myWeaponCollider = GetComponentInChildren<DamageCollider>();
+
+    #region CancelCases
+    // #1: when entity is invincible
+    if (PlayerState.Instance.GetCurrentState() == PlayerState.State.Invincible || PlayerState.Instance.GetCurrentState() == PlayerState.State.Die) return;
+
+    // #2: when my tenacity is larger than attacker's
+    if (attackerWeapon != null && myWeaponCollider != null)
+    {
+        if (animationHandler.GetBool(AnimationHandler.AnimParam.Attacking) &&
+        myWeaponCollider.tenacity > attackerWeapon.tenacity) return;
+    }
+    #endregion
+}
+```
+![인게임](/gifs/dodge.gif)
+
+<br>
 
 ## 트러블슈팅
 
-### 1. 총기 프레임/Notify 의존성으로 인한 연사 속도 오류
-- **문제**: 애니메이션 몽타주의 AnimNotify에 격발 로직을 바인딩해 두었으나, 프레임 드랍이나 몽타주 재생 속도 조절 시 실제 프레임에 맞춰 연사 속도가 비정상적으로 빨라지거나 느려지는 현상이 발생했습니다. [YouTube 문제 상황 1](https://www.youtube.com/watch?v=-_sebh7_O0Q)
-- **해결**:
-  - 무기 데이터(DataTable)에 `FireRate` 항목을 추가하고, `TickComponent` 내에서 DeltaTime 누적 수치(`mTimeSinceLastShot`)를 계산하는 타이머 기반 로직으로 전환했습니다.
-  - 애니메이션 재생 타이밍과 실제 격발 타이밍을 분리하여 안정적인 사격 주기를 확보했습니다.
+### 1. Git 히스토리 유실 사고 및 협업 버전 관리 프로세스 정립
+- 문제 상황: Git 명령어 숙련도가 부족했던 시기에 작업 브랜치의 커밋 히스토리를 강제로 덮어쓰면서, 작업 중이던 주요 기능 코드가 유실되는 사고가 발생했습니다.
+- 대처 및 해결: 팀원에게 상황을 즉시 공유하고 팀원의 최신 커밋을 다시 불러온 뒤, 한 노트북 앞에 함께 앉아 제가 수정한 내역들을 직접 설명해 가며 실시간으로 코드를 재구현하고 복구했습니다.
+- 배운 점 및 개선 조치: git push --force 사용을 엄격히 금지하고, 작업중인 브랜치의 히스토리를 주기적으로 확인하며 개발에 임했습니다.
 
-### 2. 높이가 다른 벽 오르기 시 Motion Warping 위치 어긋남
-- **문제**: Motion Warping으로 착지/잡기 지점을 지정했으나, 장애물 높이에 따라 캡슐 콜리전과 벽 상단의 연산 지점이 달라지면서 파쿠르 종료 후 플레이어가 공중에 뜨거나 벽 내부로 파묻히는 문제가 있었습니다. [YouTube 문제 상황 2](https://www.youtube.com/watch?v=SwFqHIYX0_8)
-- **해결**:
-  - Trace로 측정한 실제 벽 높이 오프셋(`mWallHeight`)을 계산하여, 파쿠르 시작 시 플레이어의 캡슐 콜리전 위치와 이동 모드(`MOVE_Flying`)를 수동으로 1차 보정한 뒤 Motion Warping을 수행하도록 수정했습니다.
+### 2. 플레이어 움직임 방식(Rigidbody)의 문제점 개선
+- 문제 상황: 초기에 리지드바디를 이용해서 플레이어 구현 시 빠른 이동이나 모퉁이 회전 시, 캐릭터가 벽을 뚫고 지나가거나 지형 밑으로 낙하하는 충돌 뚫림(Tunneling) 현상이 지속적으로 발생했습니다.
+- 원인 분석: Rigidbody 기반 이동은 물리 연산 주기(FixedUpdate)마다 힘이나 속도를 적용하는 방식이기 때문에, 프레임 드랍이나 높은 속도에서 물리 콜라이더 연산이 충돌체를 지나쳐 버리는 터널링 문제가 발생하는 것이 원인이었습니다.
+- 대처 및 해결: 물리 연산 오차에 민감한 Rigidbody 대신, 캐릭터 전용 레이캐스트 및 경사면 처리 기능이 내장된 CharacterController 스크립트 구조로 전환하고, .Move() 함수를 활용하여 프레임 단위의 정확한 이동량을 제어하여, 경사면 이동 및 충돌 판정의 안정성을 대폭 개선하여 벽 뚫림 현상을 해결했습니다.
+- 배운 점 및 개선 조치: Rigidbody와 CharacterController의 작동 방식을 자세히 알게 되었고, 게임엔진에서 객체의 움직임을 나타내기 위한 방법을 고민해보는 시간을 가질 수 있었습니다.
 
 ---
 
 ## 개발 회고 및 성찰
 
-- **언리얼 엔진 5 핵심 플러그인 및 시스템 활용**: `EnhancedInput`, `MotionWarping`, `AssetManager` 등 엔진 내장 플러그인과 프레임워크를 프로젝트에 직접 적용하며, 각 기능의 내부 동작 원리와 확장 가능성을 명확히 이해할 수 있었습니다. 언리얼 엔진 개발은 OOP에 대한 깊은 이해도가 필수적이라는 것을 몸소 느낄 수 있었고, 엔진의 잠재능력을 더 끌어올리기 위해서는 C++의 class에 대한 높은 이해도가 있어야 한다는 깨달음을 얻었습니다.
-- **데이터 및 이벤트를 통한 구조 개선**: UGameEventMessageSubsystem과 Delegate를 활용한 이벤트 기반 설계를 통해 시스템 간 결합도를 최소화하고, DataTable 기반의 데이터 중심 방식을 적용하여 유지보수성과 확장성이 높고 안정적인 클라이언트 아키텍처의 중요성을 체감했습니다. 팀과 개발하면서 팀원이 내 코드를 유의깊게 볼 수 있고, 내 코드로 컨텐츠를 확장할 수 있다는 점을 깊게 느꼈습니다. 이러한 맥락에서 왜 유지보수성과 가독성이 중요한지 알 수 있었고, 단순히 높은 기술력 뿐만 아니라 팀원의 스타일을 고려하여 코드를 작성할 줄 아는 유연함 역시 개발자에게 필요한 역량이라는 것을 깨달았습니다.
+- **모듈화 중심의 확장성 있는 코드 설계**:  협업 환경에서 누구나 접근하기 편하고 수정과 확장이 자유로운 코드를 만드는 것이 개발자의 핵심 덕목이라 생각해 모듈화를 이번 첫 팀 프로젝트의 주요 컨셉으로 잡았습니다. 각 모듈의 책임을 PlayerController, PlayerHealth, PlayerState, InputHandler 등 컴포넌트 단위로 독립시켜 팀원이 내 코드로 쉽게 컨텐츠를 확장할 수 있게 만들면서, 왜 가독성과 모듈화 구조가 유지보수에 중요한지 깊게 체감할 수 있었습니다.
+
+- **동료와의 실시간 커뮤니케이션과 협업**: Git 사고로 코드가 유실되었을 때, 솔직하게 상황을 공유하고 팀원의 최신 커밋을 불러와 한 노트북 앞에 같이 앉아 실시간으로 소통하며 복구해 나갔습니다. 이 과정을 통해 예기치 못한 문제가 생겼을 때의 대처 능력뿐만 아니라, 단순히 혼자 코드를 잘 짜는 것을 넘어 팀원과 맞춰가며 작업하는 유연한 협업 방식의 중요성을 깊게 느꼈습니다. 이러한 맥락에서 왜 유지보수성과 가독성이 중요한지 알 수 있었고, 단순히 높은 기술력 뿐만 아니라 팀원의 스타일을 고려하여 코드를 작성할 줄 아는 유연함 역시 개발자에게 필요한 역량이라는 것을 깨달았습니다.
